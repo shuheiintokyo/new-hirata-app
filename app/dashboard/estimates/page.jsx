@@ -7,7 +7,7 @@ import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import EstimateForm from "@/app/components/EstimateForm";
 
-export default function EstimatePage() {
+export default function EstimatesPage() {
   const router = useRouter();
 
   // Check if user is logged in

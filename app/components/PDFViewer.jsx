@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 
 export default function PDFViewer({ pdfUrl, onClose }) {
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (pdfUrl) {
@@ -11,9 +12,41 @@ export default function PDFViewer({ pdfUrl, onClose }) {
     }
   }, [pdfUrl]);
 
+  if (error) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl overflow-hidden max-w-md w-full p-6 flex flex-col">
+          <h2 className="text-lg font-semibold mb-2">エラー</h2>
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={onClose}
+            className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-red-600 hover:bg-red-700 self-end"
+          >
+            閉じる
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (!pdfUrl) {
     return null;
   }
+
+  const handleDownload = () => {
+    try {
+      // Create a temporary link
+      const link = document.createElement("a");
+      link.href = pdfUrl;
+      link.download = "document.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Download error:", err);
+      setError("PDFのダウンロード中にエラーが発生しました。");
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -21,13 +54,12 @@ export default function PDFViewer({ pdfUrl, onClose }) {
         <div className="p-4 border-b flex justify-between items-center">
           <h2 className="text-lg font-semibold">PDF プレビュー</h2>
           <div>
-            <a
-              href={pdfUrl}
-              download="document.pdf"
+            <button
+              onClick={handleDownload}
               className="inline-flex items-center px-3 py-1 mr-2 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
             >
               ダウンロード
-            </a>
+            </button>
 
             <button
               onClick={() => window.open(pdfUrl, "_blank")}
@@ -56,6 +88,7 @@ export default function PDFViewer({ pdfUrl, onClose }) {
               src={pdfUrl}
               className="w-full h-full border-0"
               title="PDF Viewer"
+              onError={() => setError("PDFの表示中にエラーが発生しました。")}
             />
           )}
         </div>

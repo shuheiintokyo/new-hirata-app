@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PDFViewer from "./PDFViewer";
+import { generateEstimatePDF } from "@/app/lib/pdf";
 
 export default function EstimateForm() {
   const [loading, setLoading] = useState(false);
@@ -34,9 +35,9 @@ export default function EstimateForm() {
       .fill()
       .map(() => ({
         productName: "",
-        quantity: 0,
+        quantity: "", // Empty string instead of 0
         unit: "個",
-        unitPrice: 0,
+        unitPrice: "", // Empty string instead of 0
         amount: 0,
       })),
     notes: "",
@@ -47,9 +48,18 @@ export default function EstimateForm() {
     const newItems = [...estimate.items];
 
     if (field === "quantity" || field === "unitPrice") {
-      newItems[index][field] = parseFloat(value) || 0;
-      newItems[index].amount =
-        newItems[index].quantity * newItems[index].unitPrice;
+      // Remove leading zeros for numeric inputs
+      const cleanedValue = value.toString().replace(/^0+/, "") || "";
+
+      // Only allow numbers
+      if (/^\d*$/.test(cleanedValue)) {
+        newItems[index][field] = cleanedValue;
+
+        // Calculate amount
+        const quantity = parseFloat(newItems[index].quantity) || 0;
+        const unitPrice = parseFloat(newItems[index].unitPrice) || 0;
+        newItems[index].amount = quantity * unitPrice;
+      }
     } else {
       newItems[index][field] = value;
     }
@@ -59,24 +69,21 @@ export default function EstimateForm() {
 
   // Calculate total amount
   const totalAmount = estimate.items.reduce(
-    (sum, item) => sum + item.amount,
+    (sum, item) => sum + (item.amount || 0),
     0
   );
 
   // Generate PDF
-  const generatePDF = async () => {
+  const generatePDF = async (e) => {
+    e.preventDefault();
     setLoading(true);
 
     try {
-      // In a real application, you would call the API to generate the PDF
-      // For this template, we'll simulate a successful response
+      // In a real application, we call the jsPDF function
+      const pdfDataUrl = generateEstimatePDF(estimate);
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mocked PDF URL (in a real app, this would be the actual PDF URL)
-      // For demo purposes we're just showing the viewer would appear
-      setPdfUrl("#");
+      // Set the PDF URL for the viewer
+      setPdfUrl(pdfDataUrl);
       setShowPdfViewer(true);
     } catch (error) {
       console.error("Error generating PDF:", error);
@@ -90,12 +97,7 @@ export default function EstimateForm() {
     <>
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              generatePDF();
-            }}
-          >
+          <form onSubmit={generatePDF}>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
               <div className="sm:col-span-3">
                 <label
@@ -335,7 +337,7 @@ export default function EstimateForm() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
-                              type="number"
+                              type="text"
                               value={item.quantity}
                               onChange={(e) =>
                                 handleItemChange(
@@ -364,7 +366,7 @@ export default function EstimateForm() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
-                              type="number"
+                              type="text"
                               value={item.unitPrice}
                               onChange={(e) =>
                                 handleItemChange(
