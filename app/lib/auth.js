@@ -1,69 +1,47 @@
-// Client-side authentication utility
+// app/lib/auth.js
+
+/**
+ * Basic authentication utility functions
+ * In a production application, you would use more secure methods and connect to a database
+ */
 
 // Check if user is authenticated
 export const isAuthenticated = () => {
-  if (typeof window === "undefined") {
-    return false;
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("isLoggedIn") === "true";
   }
-
-  return localStorage.getItem("isLoggedIn") === "true";
+  return false;
 };
 
-// Get current user data
-export const getCurrentUser = () => {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const userStr = localStorage.getItem("user");
-  if (!userStr) {
-    return null;
-  }
-
-  try {
-    return JSON.parse(userStr);
-  } catch (e) {
-    console.error("Error parsing user data:", e);
-    return null;
-  }
-};
-
-// Login user
-export const login = (userData) => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  localStorage.setItem("isLoggedIn", "true");
-  localStorage.setItem("user", JSON.stringify(userData));
-};
-
-// Logout user
-export const logout = () => {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  localStorage.removeItem("isLoggedIn");
-  localStorage.removeItem("user");
-};
-
-// Auth protection for client components
-export const withAuth = (Component) => {
-  return (props) => {
-    if (typeof window !== "undefined") {
-      const authenticated = isAuthenticated();
-
-      if (!authenticated) {
-        // Redirect to login page
-        window.location.href = "/";
-        return null;
+// Get user data
+export const getUserData = () => {
+  if (typeof window !== "undefined") {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      try {
+        return JSON.parse(userData);
+      } catch (e) {
+        console.error("Error parsing user data:", e);
       }
-
-      return <Component {...props} />;
     }
+  }
+  return null;
+};
 
-    // Server-side rendering or loading state
-    return <div>Loading...</div>;
-  };
+// Log out user
+export const logout = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("isLoggedIn");
+    localStorage.removeItem("user");
+  }
+};
+
+// Mock login function (in a real app, this would validate against a backend)
+export const login = (username, password) => {
+  if (username && password) {
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("user", JSON.stringify({ username, role: "admin" }));
+    return true;
+  }
+  return false;
 };

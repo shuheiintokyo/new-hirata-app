@@ -1,14 +1,12 @@
+// app/components/Footer.jsx
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
-
   return (
-    <footer className="bg-white border-t border-gray-200 mt-auto">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="text-center text-sm text-gray-500">
-          <p>
-            &copy; {currentYear} 平田トレーディング株式会社 All Rights Reserved.
-          </p>
-        </div>
+    <footer className="bg-white py-4 border-t border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <p className="text-center text-sm text-gray-500">
+          &copy; {new Date().getFullYear()} 平田トレーディング. All rights
+          reserved.
+        </p>
       </div>
     </footer>
   );

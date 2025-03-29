@@ -1,70 +1,70 @@
-// Database utility for future implementation
-// This file is a placeholder that can be expanded when connecting to a database
+// app/lib/db.js
 
-// Mock function to simulate data storage
-// In a real application, this would interact with an actual database
-export const storeData = async (collection, data) => {
-  console.log(`Storing data in "${collection}" collection:`, data);
+/**
+ * Database utility functions
+ * In a production application, this would connect to a real database
+ */
 
-  // In a real app, you might use:
-  // - Firestore: await addDoc(collection(db, collection), data);
-  // - MongoDB: await db.collection(collection).insertOne(data);
-  // - Postgres/MySQL: through an ORM or direct queries
+// Mock database for estimates
+let estimates = [];
+let orders = [];
 
-  // For now, we'll just generate a mock ID and return the data
-  return {
-    id: `${collection}_${Date.now()}`,
-    ...data,
-    createdAt: new Date().toISOString(),
+// Generate a unique ID
+const generateId = () => {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+};
+
+// Format date to YYYY/MM/DD
+const formatDate = (date = new Date()) => {
+  return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  )}/${String(date.getDate()).padStart(2, "0")}`;
+};
+
+// Save estimate
+export const saveEstimate = (estimateData) => {
+  const id = generateId();
+  const newEstimate = {
+    id,
+    ...estimateData,
+    createdAt: formatDate(),
   };
+  estimates.push(newEstimate);
+  return newEstimate;
 };
 
-// Mock function to simulate data retrieval
-export const getData = async (collection, id) => {
-  console.log(
-    `Retrieving data from "${collection}" collection with id "${id}"`
-  );
-
-  // In a real app, you would fetch from the database
-  // For now, return null to indicate the item wasn't found
-  return null;
+// Get all estimates
+export const getEstimates = () => {
+  return estimates;
 };
 
-// Mock function to simulate data listing
-export const listData = async (collection, filters = {}) => {
-  console.log(
-    `Listing data from "${collection}" collection with filters:`,
-    filters
-  );
-
-  // In a real app, you would query the database
-  // For now, return an empty array
-  return [];
+// Get estimate by id
+export const getEstimateById = (id) => {
+  return estimates.find((estimate) => estimate.id === id);
 };
 
-// Mock function to simulate data updating
-export const updateData = async (collection, id, data) => {
-  console.log(
-    `Updating data in "${collection}" collection with id "${id}":`,
-    data
-  );
-
-  // In a real app, you would update the database record
-  // For now, return a success status
-  return {
-    success: true,
-    updatedAt: new Date().toISOString(),
+// Save order
+export const saveOrder = (orderData) => {
+  const id = generateId();
+  const newOrder = {
+    id,
+    ...orderData,
+    createdAt: formatDate(),
   };
+  orders.push(newOrder);
+  return newOrder;
 };
 
-// Mock function to simulate data deletion
-export const deleteData = async (collection, id) => {
-  console.log(`Deleting data from "${collection}" collection with id "${id}"`);
-
-  // In a real app, you would delete the database record
-  // For now, return a success status
-  return {
-    success: true,
-    deletedAt: new Date().toISOString(),
-  };
+// Get all orders
+export const getOrders = () => {
+  return orders;
 };
+
+// Get order by id
+export const getOrderById = (id) => {
+  return orders.find((order) => order.id === id);
+};
+
+// In a real application, you would have functions to connect to a database
+// and perform CRUD operations on your data

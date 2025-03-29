@@ -1,3 +1,4 @@
+// app/api/auth/route.js
 import { NextResponse } from "next/server";
 
 // Mock authentication API

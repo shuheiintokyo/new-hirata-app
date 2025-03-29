@@ -1,3 +1,4 @@
+// app/pages/dashboard/index.jsx
 "use client";
 
 import { useEffect, useState } from "react";

@@ -11,7 +11,9 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (username && password) {
+      // Store login status and user info
       localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("user", JSON.stringify({ username }));
       router.push("/dashboard");
     } else {
       setError("ユーザー名とパスワードを入力してください");
@@ -30,7 +32,6 @@ export default function LoginPage() {
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {/* Form inputs here */}
           <div className="rounded-md shadow-sm -space-y-px">
             <div>
               <label htmlFor="username" className="sr-only">

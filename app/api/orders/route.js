@@ -1,38 +1,21 @@
+// app/api/orders/route.js
 import { NextResponse } from "next/server";
 
-// Mock orders API
-// In a real application, you would connect to a database for CRUD operations
-
-// Get all orders (mock data)
+// Get all orders
 export async function GET() {
   try {
-    // Mock data - in a real app, you would fetch from a database
-    const orders = [
-      {
-        id: "ord1",
-        orderNumber: "ORD-20250328-001",
-        date: "2025/03/28",
-        supplierName: "東京電子部品",
-        amount: 230000,
-        status: "発注済み",
-      },
-      {
-        id: "ord2",
-        orderNumber: "ORD-20250326-002",
-        date: "2025/03/26",
-        supplierName: "大阪金属工業",
-        amount: 156000,
-        status: "納品待ち",
-      },
-    ];
-
-    return NextResponse.json({ success: true, orders });
+    // In a real application, this would fetch from a database
+    // For demo purposes, we'll return mock data
+    return NextResponse.json({
+      success: true,
+      orders: [],
+    });
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       {
         success: false,
-        error: "発注書の取得中にエラーが発生しました。",
+        error: "発注書データの取得中にエラーが発生しました。",
       },
       { status: 500 }
     );
@@ -42,18 +25,30 @@ export async function GET() {
 // Create a new order
 export async function POST(request) {
   try {
-    const data = await request.json();
+    const orderData = await request.json();
 
-    // In a real app, you would validate the data and save to a database
-    // For now, we'll just echo back the data with a generated ID
-    const newOrder = {
-      id: `ord${Date.now()}`,
-      ...data,
-    };
+    // In a real app, you would save this to a database
+    // Generate a PDF file, etc.
+
+    // Mock successful response
+    const orderNumber = `ORD-${new Date().getFullYear()}${String(
+      new Date().getMonth() + 1
+    ).padStart(2, "0")}${String(new Date().getDate()).padStart(
+      2,
+      "0"
+    )}-${Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0")}`;
 
     return NextResponse.json({
       success: true,
-      order: newOrder,
+      order: {
+        id: Date.now().toString(),
+        orderNumber,
+        ...orderData,
+        createdAt: new Date().toISOString(),
+      },
+      pdfUrl: "#", // In a real app, this would be the URL to the generated PDF
     });
   } catch (error) {
     console.error("Error creating order:", error);
