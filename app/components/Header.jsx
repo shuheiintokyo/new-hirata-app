@@ -23,7 +23,7 @@ export default function Header({ title }) {
                 href="/dashboard"
                 className="text-xl font-bold text-gray-800"
               >
-                平田トレーディング
+                Hirata Trading
               </Link>
             </div>
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
@@ -31,19 +31,19 @@ export default function Header({ title }) {
                 href="/dashboard"
                 className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                ダッシュボード
+                Dashboard
               </Link>
               <Link
                 href="/dashboard/estimates"
                 className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                見積書
+                Estimates
               </Link>
               <Link
                 href="/dashboard/orders"
                 className="border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
               >
-                発注書
+                Purchase Orders
               </Link>
             </div>
           </div>
@@ -53,7 +53,7 @@ export default function Header({ title }) {
                 onClick={handleLogout}
                 className="inline-flex items-center px-3 py-1 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
               >
-                ログアウト
+                Logout
               </button>
             </div>
           </div>

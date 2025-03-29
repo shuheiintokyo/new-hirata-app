@@ -1,5 +1,4 @@
-// This is the part of app/lib/pdf.js that needs to be fixed
-// to ensure generateEstimatePDF returns a resolved value and not a Promise
+// app/lib/pdf.js - Simplified version without Japanese font handling
 
 // Function to generate a PDF for estimates
 export const generateEstimatePDF = async (estimateData) => {
@@ -9,265 +8,323 @@ export const generateEstimatePDF = async (estimateData) => {
       orientation: "portrait",
       unit: "mm",
       format: "a4",
-      putOnlyUsedFonts: true,
-      compress: true,
     });
 
-    // Helper function to add Japanese text to PDF by converting to image
-    const addJapaneseText = (text, x, y, options = {}) => {
-      return new Promise((resolve) => {
-        // Use default options if not provided
-        const fontSize = options.fontSize || 10;
-        const fontWeight = options.fontWeight || "normal";
-        const textAlign = options.align || "left";
+    // Add company info
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Hirata Trading", 20, 20);
 
-        // Create SVG element
-        const svg = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "svg"
-        );
-        svg.setAttribute("width", "1000");
-        svg.setAttribute("height", "100");
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("123-4567 Tokyo", 20, 28);
+    doc.text("TEL: 03-1234-5678", 20, 33);
 
-        const textElement = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "text"
-        );
-        textElement.setAttribute("x", "0");
-        textElement.setAttribute("y", "30");
-        textElement.setAttribute(
-          "font-family",
-          "'Noto Sans JP', 'Hiragino Sans', 'Meiryo', sans-serif"
-        );
-        textElement.setAttribute("font-size", fontSize);
-        textElement.setAttribute("font-weight", fontWeight);
-        textElement.textContent = text;
+    // Document title
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("ESTIMATE", 105, 25, { align: "center" });
 
-        svg.appendChild(textElement);
+    // Date and document number
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${estimateData.date}`, 190, 20, { align: "right" });
+    doc.text(`No: ${estimateData.estimateNumber}`, 190, 25, { align: "right" });
 
-        // Convert SVG to data URL
-        const svgData = new XMLSerializer().serializeToString(svg);
-        const canvas = document.createElement("canvas");
-        canvas.width = 1000;
-        canvas.height = 100;
-        const ctx = canvas.getContext("2d");
+    // Generate serial number for tracking
+    const serialNumber = `EST-${Date.now()}`;
+    doc.text(`ID: ${serialNumber}`, 190, 30, { align: "right" });
 
-        const DOMURL = window.URL || window.webkitURL || window;
-        const img = new Image();
-        const svgBlob = new Blob([svgData], {
-          type: "image/svg+xml;charset=utf-8",
-        });
-        const url = DOMURL.createObjectURL(svgBlob);
+    // Client info box
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, 45, 170, 25, "F");
+    doc.text(`Client: ${estimateData.clientName || "Client Name"}`, 25, 55);
+    if (estimateData.clientAddress) {
+      doc.text(`Address: ${estimateData.clientAddress}`, 25, 62);
+    }
 
-        img.onload = function () {
-          ctx.drawImage(img, 0, 0);
-          DOMURL.revokeObjectURL(url);
+    // Table header
+    let yPos = 80;
+    doc.setFillColor(220, 220, 240);
+    doc.rect(20, yPos, 170, 10, "F");
+    doc.setDrawColor(100, 100, 100);
 
-          let imgWidth =
-            textElement.getComputedTextLength() || text.length * fontSize * 0.6;
-          if (imgWidth < 5) imgWidth = text.length * fontSize * 0.6; // Fallback calculation if getComputedTextLength is 0
+    // Table headers
+    doc.text("Product", 25, yPos + 7);
+    doc.text("Quantity", 95, yPos + 7);
+    doc.text("Unit", 115, yPos + 7);
+    doc.text("Unit Price", 135, yPos + 7);
+    doc.text("Amount", 175, yPos + 7, { align: "right" });
 
-          const imgHeight = fontSize * 1.2;
+    // Draw table outline
+    doc.rect(20, yPos, 170, 100);
 
-          // Calculate position adjustments for text alignment
-          let xPos = x;
-          if (textAlign === "center") {
-            xPos = x - imgWidth / 2;
-          } else if (textAlign === "right") {
-            xPos = x - imgWidth;
-          }
+    // Draw vertical lines
+    doc.line(90, yPos, 90, yPos + 100);
+    doc.line(110, yPos, 110, yPos + 100);
+    doc.line(130, yPos, 130, yPos + 100);
+    doc.line(160, yPos, 160, yPos + 100);
 
-          const imgData = canvas.toDataURL("image/png");
-          doc.addImage(
-            imgData,
-            "PNG",
-            xPos,
-            y - imgHeight * 0.8,
-            imgWidth,
-            imgHeight
-          );
-          resolve();
-        };
+    // Draw horizontal line after header
+    doc.line(20, yPos + 10, 190, yPos + 10);
 
-        img.src = url;
-      });
-    };
+    // Table items
+    yPos += 15;
+    const lineHeight = 10;
+    let totalAmount = 0;
 
-    // Function to wait for all promises to complete
-    const addAllText = async () => {
-      // Add serial number for tracking
-      const serialNumber = `PDF-${Date.now()}`;
+    for (let i = 0; i < estimateData.items.length; i++) {
+      const item = estimateData.items[i];
+      if (
+        item.productName ||
+        (item.quantity && parseFloat(item.quantity) > 0)
+      ) {
+        // Product name
+        if (item.productName) {
+          doc.text(item.productName, 25, yPos);
+        }
 
-      // --- HEADER ---
-      await addJapaneseText("平田トレーディング", 20, 20, {
-        fontSize: 16,
-        fontWeight: "bold",
-      });
+        // Quantity
+        const qty = item.quantity ? parseFloat(item.quantity) : 0;
+        doc.text(qty.toString(), 95, yPos);
 
-      doc.setFontSize(10); // For non-Japanese text
-      doc.text("123-4567", 20, 28);
-      await addJapaneseText("東京都", 20, 33);
-      doc.text("TEL: 03-1234-5678", 20, 38);
+        // Unit
+        if (item.unit) {
+          doc.text(item.unit, 115, yPos);
+        }
 
-      // Document title
-      await addJapaneseText("見積書", 105, 25, {
-        fontSize: 16,
-        fontWeight: "bold",
-        align: "center",
-      });
+        // Unit price
+        const unitPrice = item.unitPrice ? parseFloat(item.unitPrice) : 0;
+        doc.text(unitPrice.toLocaleString(), 135, yPos);
 
-      // Date and document number
-      await addJapaneseText(`日付: ${estimateData.date}`, 190, 20, {
-        align: "right",
-      });
-      doc.text(`No: ${estimateData.estimateNumber}`, 190, 25, {
-        align: "right",
-      });
-      doc.text(`ID: ${serialNumber}`, 190, 30, { align: "right" });
+        // Amount
+        const amount = qty * unitPrice;
+        doc.text(amount.toLocaleString(), 175, yPos, { align: "right" });
 
-      // --- CLIENT INFO ---
-      doc.setFillColor(240, 240, 240);
-      doc.rect(20, 45, 170, 25, "F");
+        totalAmount += amount;
+        yPos += lineHeight;
 
-      await addJapaneseText(
-        `顧客: ${estimateData.clientName || "顧客名"}`,
-        25,
-        55,
-        { fontSize: 12 }
-      );
-      if (estimateData.clientAddress) {
-        await addJapaneseText(`住所: ${estimateData.clientAddress}`, 25, 62);
+        // Don't exceed page
+        if (yPos > 170 && i < estimateData.items.length - 1) {
+          doc.addPage();
+          yPos = 20;
+        }
       }
+    }
 
-      // --- TABLE HEADER ---
-      let yPos = 80;
+    // Total
+    yPos = 190;
+    doc.setLineWidth(0.5);
+    doc.line(130, yPos, 190, yPos);
 
-      // Draw table header
-      doc.setFillColor(220, 220, 240);
-      doc.rect(20, yPos, 170, 10, "F");
-      doc.setDrawColor(100, 100, 100);
+    doc.setFontSize(12);
+    doc.text("Total Amount:", 130, yPos + 8);
+    doc.text(`${totalAmount.toLocaleString()} $`, 190, yPos + 8, {
+      align: "right",
+    });
 
-      // Table headers
-      await addJapaneseText("商品", 25, yPos + 7);
-      await addJapaneseText("数量", 95, yPos + 7);
-      await addJapaneseText("単位", 115, yPos + 7);
-      await addJapaneseText("単価", 135, yPos + 7);
-      await addJapaneseText("金額", 175, yPos + 7, { align: "right" });
-
-      // Draw table outline
-      doc.rect(20, yPos, 170, 100);
-
-      // Draw vertical lines
-      doc.line(90, yPos, 90, yPos + 100);
-      doc.line(110, yPos, 110, yPos + 100);
-      doc.line(130, yPos, 130, yPos + 100);
-      doc.line(160, yPos, 160, yPos + 100);
-
-      // Draw horizontal line after header
-      doc.line(20, yPos + 10, 190, yPos + 10);
-
-      // --- TABLE ITEMS ---
+    // Notes
+    if (estimateData.notes) {
       yPos += 15;
-      const lineHeight = 10;
-      let totalAmount = 0;
+      doc.setFontSize(10);
+      doc.text("Notes:", 20, yPos);
+      doc.text(estimateData.notes, 20, yPos + 7);
+    }
 
-      for (let i = 0; i < estimateData.items.length; i++) {
-        const item = estimateData.items[i];
-        if (
-          item.productName ||
-          (item.quantity && parseFloat(item.quantity) > 0)
-        ) {
-          // Product name
-          if (item.productName) {
-            await addJapaneseText(item.productName, 25, yPos);
-          }
+    // Footer
+    yPos = 260;
+    doc.text(`Payment Method: ${estimateData.paymentMethod}`, 20, yPos);
+    doc.text(`Delivery Time: ${estimateData.leadTime}`, 20, yPos + 5);
 
-          // Quantity
-          const qty = item.quantity ? parseFloat(item.quantity) : 0;
-          doc.text(qty.toString(), 95, yPos);
-
-          // Unit
-          if (item.unit) {
-            await addJapaneseText(item.unit, 115, yPos);
-          }
-
-          // Unit price
-          const unitPrice = item.unitPrice ? parseFloat(item.unitPrice) : 0;
-          doc.text(unitPrice.toLocaleString(), 135, yPos);
-
-          // Amount
-          const amount = qty * unitPrice;
-          doc.text(amount.toLocaleString(), 175, yPos, { align: "right" });
-
-          totalAmount += amount;
-          yPos += lineHeight;
-
-          // Don't exceed page
-          if (yPos > 170 && i < estimateData.items.length - 1) {
-            doc.addPage();
-            yPos = 20;
-          }
-        }
-      }
-
-      // --- TOTAL ---
-      yPos = 190;
-      doc.setLineWidth(0.5);
-      doc.line(130, yPos, 190, yPos);
-
-      await addJapaneseText("合計金額:", 130, yPos + 8, { fontSize: 12 });
-      await addJapaneseText(
-        `${totalAmount.toLocaleString()} 円`,
-        190,
-        yPos + 8,
-        {
-          fontSize: 12,
-          align: "right",
-        }
-      );
-
-      // --- NOTES ---
-      if (estimateData.notes) {
-        yPos += 15;
-        await addJapaneseText("備考:", 20, yPos);
-        await addJapaneseText(estimateData.notes, 20, yPos + 7);
-      }
-
-      // --- FOOTER ---
-      yPos = 260;
-      await addJapaneseText(
-        `支払方法: ${estimateData.paymentMethod}`,
+    if (estimateData.deliveryLocation) {
+      doc.text(
+        `Delivery Location: ${estimateData.deliveryLocation}`,
         20,
-        yPos
+        yPos + 10
       );
-      await addJapaneseText(`納期: ${estimateData.leadTime}`, 20, yPos + 5);
+    }
 
-      if (estimateData.deliveryLocation) {
-        await addJapaneseText(
-          `納品先: ${estimateData.deliveryLocation}`,
-          20,
-          yPos + 10
-        );
+    // Company seal placeholder
+    doc.circle(170, yPos, 12, "S");
+    doc.text("SEAL", 170, yPos, { align: "center" });
+
+    // Document ID for reference
+    doc.setFontSize(6);
+    doc.text(`Document ID: ${serialNumber}`, 105, 285, { align: "center" });
+
+    // Generate PDF data URL and return it
+    return doc.output("dataurlstring");
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    throw error;
+  }
+};
+
+// Function to generate a PDF for orders (similar structure to estimates)
+export const generateOrderPDF = async (orderData) => {
+  try {
+    // Create a new PDF document
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    // Add company info
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Hirata Trading", 20, 20);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("123-4567 Tokyo", 20, 28);
+    doc.text("TEL: 03-1234-5678", 20, 33);
+
+    // Document title
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("PURCHASE ORDER", 105, 25, { align: "center" });
+
+    // Date and document number
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Date: ${orderData.date}`, 190, 20, { align: "right" });
+    doc.text(`No: ${orderData.orderNumber}`, 190, 25, { align: "right" });
+
+    // Generate serial number for tracking
+    const serialNumber = `ORD-${Date.now()}`;
+    doc.text(`ID: ${serialNumber}`, 190, 30, { align: "right" });
+
+    // Supplier info box
+    doc.setFillColor(240, 240, 240);
+    doc.rect(20, 45, 170, 25, "F");
+    doc.text(`Supplier: ${orderData.supplierName || "Supplier Name"}`, 25, 55);
+    if (orderData.supplierAddress) {
+      doc.text(`Address: ${orderData.supplierAddress}`, 25, 62);
+    }
+
+    // Table header
+    let yPos = 80;
+    doc.setFillColor(220, 220, 240);
+    doc.rect(20, yPos, 170, 10, "F");
+    doc.setDrawColor(100, 100, 100);
+
+    // Table headers
+    doc.text("Product", 25, yPos + 7);
+    doc.text("Product Code", 80, yPos + 7);
+    doc.text("Qty", 120, yPos + 7);
+    doc.text("Unit", 135, yPos + 7);
+    doc.text("Unit Price", 150, yPos + 7);
+    doc.text("Amount", 175, yPos + 7, { align: "right" });
+
+    // Draw table outline
+    doc.rect(20, yPos, 170, 100);
+
+    // Draw vertical lines
+    doc.line(75, yPos, 75, yPos + 100);
+    doc.line(115, yPos, 115, yPos + 100);
+    doc.line(130, yPos, 130, yPos + 100);
+    doc.line(145, yPos, 145, yPos + 100);
+    doc.line(160, yPos, 160, yPos + 100);
+
+    // Draw horizontal line after header
+    doc.line(20, yPos + 10, 190, yPos + 10);
+
+    // Table items
+    yPos += 15;
+    const lineHeight = 10;
+    let totalAmount = 0;
+
+    for (let i = 0; i < orderData.items.length; i++) {
+      const item = orderData.items[i];
+      if (
+        item.productName ||
+        (item.quantity && parseFloat(item.quantity) > 0)
+      ) {
+        // Product name
+        if (item.productName) {
+          doc.text(item.productName, 25, yPos);
+        }
+
+        // Product code
+        if (item.productCode) {
+          doc.text(item.productCode, 80, yPos);
+        }
+
+        // Quantity
+        const qty = item.quantity ? parseFloat(item.quantity) : 0;
+        doc.text(qty.toString(), 120, yPos);
+
+        // Unit
+        if (item.unit) {
+          doc.text(item.unit, 135, yPos);
+        }
+
+        // Unit price
+        const unitPrice = item.unitPrice ? parseFloat(item.unitPrice) : 0;
+        doc.text(unitPrice.toLocaleString(), 150, yPos);
+
+        // Amount
+        const amount = qty * unitPrice;
+        doc.text(amount.toLocaleString(), 175, yPos, { align: "right" });
+
+        totalAmount += amount;
+        yPos += lineHeight;
+
+        // Don't exceed page
+        if (yPos > 170 && i < orderData.items.length - 1) {
+          doc.addPage();
+          yPos = 20;
+        }
       }
+    }
 
-      // Add company seal placeholder
-      doc.circle(170, yPos, 12, "S");
-      await addJapaneseText("印", 170, yPos, { align: "center" });
+    // Total
+    yPos = 190;
+    doc.setLineWidth(0.5);
+    doc.line(130, yPos, 190, yPos);
 
-      // Add document ID
-      doc.setFontSize(6);
-      await addJapaneseText(`文書ID: ${serialNumber}`, 105, 285, {
-        fontSize: 6,
-        align: "center",
-      });
+    doc.setFontSize(12);
+    doc.text("Total Amount:", 130, yPos + 8);
+    doc.text(`${totalAmount.toLocaleString()} $`, 190, yPos + 8, {
+      align: "right",
+    });
 
-      // Generate PDF data URL and return it
-      return doc.output("dataurlstring");
-    };
+    // Notes
+    if (orderData.notes) {
+      yPos += 15;
+      doc.setFontSize(10);
+      doc.text("Notes:", 20, yPos);
+      doc.text(orderData.notes, 20, yPos + 7);
+    }
 
-    // Execute all text additions and return the PDF
-    // Make sure we properly await and return the result
-    return await addAllText();
+    // Footer
+    yPos = 260;
+    doc.text(`Payment Method: ${orderData.paymentMethod}`, 20, yPos);
+    doc.text(
+      `Requested Delivery Date: ${orderData.requestedDeliveryDate || "TBD"}`,
+      20,
+      yPos + 5
+    );
+
+    if (orderData.deliveryLocation) {
+      doc.text(
+        `Delivery Location: ${orderData.deliveryLocation}`,
+        20,
+        yPos + 10
+      );
+    }
+
+    // Company seal placeholder
+    doc.circle(170, yPos, 12, "S");
+    doc.text("SEAL", 170, yPos, { align: "center" });
+
+    // Document ID for reference
+    doc.setFontSize(6);
+    doc.text(`Document ID: ${serialNumber}`, 105, 285, { align: "center" });
+
+    // Generate PDF data URL and return it
+    return doc.output("dataurlstring");
   } catch (error) {
     console.error("PDF generation error:", error);
     throw error;

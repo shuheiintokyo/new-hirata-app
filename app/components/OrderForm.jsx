@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PDFViewer from "./PDFViewer";
+import { generateOrderPDF } from "@/app/lib/pdf";
 
 export default function OrderForm() {
   const [loading, setLoading] = useState(false);
@@ -26,17 +27,17 @@ export default function OrderForm() {
       .padStart(3, "0")}`,
     supplierName: "",
     supplierAddress: "",
-    deliveryLocation: "平田トレーディング本社倉庫",
+    deliveryLocation: "Hirata Trading Head Office",
     requestedDeliveryDate: "",
-    paymentMethod: "銀行振込",
+    paymentMethod: "Bank Transfer",
     items: Array(10)
       .fill()
       .map(() => ({
         productName: "",
         productCode: "",
-        quantity: 0,
-        unit: "個",
-        unitPrice: 0,
+        quantity: "",
+        unit: "pcs",
+        unitPrice: "",
         amount: 0,
       })),
     notes: "",
@@ -47,9 +48,18 @@ export default function OrderForm() {
     const newItems = [...order.items];
 
     if (field === "quantity" || field === "unitPrice") {
-      newItems[index][field] = parseFloat(value) || 0;
-      newItems[index].amount =
-        newItems[index].quantity * newItems[index].unitPrice;
+      // Remove leading zeros for numeric inputs
+      const cleanedValue = value.toString().replace(/^0+/, "") || "";
+
+      // Only allow numbers
+      if (/^\d*$/.test(cleanedValue)) {
+        newItems[index][field] = cleanedValue;
+
+        // Calculate amount
+        const quantity = parseFloat(newItems[index].quantity) || 0;
+        const unitPrice = parseFloat(newItems[index].unitPrice) || 0;
+        newItems[index].amount = quantity * unitPrice;
+      }
     } else {
       newItems[index][field] = value;
     }
@@ -58,25 +68,26 @@ export default function OrderForm() {
   };
 
   // Calculate total amount
-  const totalAmount = order.items.reduce((sum, item) => sum + item.amount, 0);
+  const totalAmount = order.items.reduce(
+    (sum, item) => sum + (item.amount || 0),
+    0
+  );
 
   // Generate PDF
-  const generatePDF = async () => {
+  const generatePDF = async (e) => {
+    e.preventDefault();
     setLoading(true);
 
     try {
-      // In a real application, you would call the API to generate the PDF
-      // For this template, we'll simulate a successful response
+      // Call the PDF generation function
+      const pdfDataUrl = await generateOrderPDF(order);
 
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Mocked PDF URL (in a real app, this would be the actual PDF URL)
-      setPdfUrl("#");
+      // Set the PDF URL for the viewer
+      setPdfUrl(pdfDataUrl);
       setShowPdfViewer(true);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("PDFの生成中にエラーが発生しました。");
+      alert("Error generating PDF.");
     } finally {
       setLoading(false);
     }
@@ -86,19 +97,14 @@ export default function OrderForm() {
     <>
       <div className="bg-white shadow overflow-hidden sm:rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              generatePDF();
-            }}
-          >
+          <form onSubmit={generatePDF}>
             <div className="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
               <div className="sm:col-span-3">
                 <label
                   htmlFor="date"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  日付
+                  Date
                 </label>
                 <div className="mt-1">
                   <input
@@ -119,7 +125,7 @@ export default function OrderForm() {
                   htmlFor="orderNumber"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  発注番号
+                  Order Number
                 </label>
                 <div className="mt-1">
                   <input
@@ -138,7 +144,7 @@ export default function OrderForm() {
                   htmlFor="supplierName"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  サプライヤー名
+                  Supplier Name
                 </label>
                 <div className="mt-1">
                   <input
@@ -159,7 +165,7 @@ export default function OrderForm() {
                   htmlFor="supplierAddress"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  サプライヤー住所
+                  Supplier Address
                 </label>
                 <div className="mt-1">
                   <input
@@ -180,7 +186,7 @@ export default function OrderForm() {
                   htmlFor="deliveryLocation"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  納品場所
+                  Delivery Location
                 </label>
                 <div className="mt-1">
                   <input
@@ -201,7 +207,7 @@ export default function OrderForm() {
                   htmlFor="requestedDeliveryDate"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  希望納期
+                  Requested Delivery Date
                 </label>
                 <div className="mt-1">
                   <input
@@ -215,7 +221,7 @@ export default function OrderForm() {
                         requestedDeliveryDate: e.target.value,
                       })
                     }
-                    placeholder="例: 2025/04/15"
+                    placeholder="e.g. 2025/04/15"
                     className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                   />
                 </div>
@@ -226,7 +232,7 @@ export default function OrderForm() {
                   htmlFor="paymentMethod"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  支払方法
+                  Payment Method
                 </label>
                 <div className="mt-1">
                   <select
@@ -238,16 +244,16 @@ export default function OrderForm() {
                     }
                     className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                   >
-                    <option value="銀行振込">銀行振込</option>
-                    <option value="請求書払い (30日)">請求書払い (30日)</option>
-                    <option value="請求書払い (60日)">請求書払い (60日)</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Invoice (30 days)">Invoice (30 days)</option>
+                    <option value="Invoice (60 days)">Invoice (60 days)</option>
                   </select>
                 </div>
               </div>
 
               <div className="sm:col-span-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  発注商品
+                  Order Items
                 </h3>
 
                 <div className="overflow-x-auto">
@@ -258,37 +264,37 @@ export default function OrderForm() {
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          商品名
+                          Product Name
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          商品コード
+                          Product Code
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          数量
+                          Quantity
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          単位
+                          Unit
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          単価 (円)
+                          Unit Price ($)
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          金額 (円)
+                          Amount ($)
                         </th>
                       </tr>
                     </thead>
@@ -325,7 +331,7 @@ export default function OrderForm() {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
-                              type="number"
+                              type="text"
                               value={item.quantity}
                               onChange={(e) =>
                                 handleItemChange(
@@ -345,16 +351,16 @@ export default function OrderForm() {
                               }
                               className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                             >
-                              <option value="個">個</option>
-                              <option value="箱">箱</option>
-                              <option value="セット">セット</option>
+                              <option value="pcs">pcs</option>
+                              <option value="box">box</option>
+                              <option value="set">set</option>
                               <option value="kg">kg</option>
                               <option value="m">m</option>
                             </select>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <input
-                              type="number"
+                              type="text"
                               value={item.unitPrice}
                               onChange={(e) =>
                                 handleItemChange(
@@ -378,10 +384,10 @@ export default function OrderForm() {
                           colSpan="5"
                           className="px-6 py-4 text-right font-semibold"
                         >
-                          合計金額
+                          Total Amount
                         </td>
                         <td className="px-6 py-4 text-right font-semibold">
-                          {totalAmount.toLocaleString()} 円
+                          {totalAmount.toLocaleString()} $
                         </td>
                       </tr>
                     </tfoot>
@@ -394,7 +400,7 @@ export default function OrderForm() {
                   htmlFor="notes"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  備考
+                  Notes
                 </label>
                 <div className="mt-1">
                   <textarea
@@ -417,7 +423,7 @@ export default function OrderForm() {
                 disabled={loading}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                {loading ? "PDF生成中..." : "PDFで出力"}
+                {loading ? "Generating PDF..." : "Generate PDF"}
               </button>
             </div>
           </form>

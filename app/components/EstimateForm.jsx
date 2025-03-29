@@ -28,15 +28,15 @@ export default function EstimateForm() {
     clientName: "",
     clientAddress: "",
     deliveryLocation: "",
-    leadTime: "2週間",
-    paymentMethod: "銀行振込",
-    validUntil: "発行日より30日間",
+    leadTime: "2 weeks",
+    paymentMethod: "Bank Transfer",
+    validUntil: "30 days from issue date",
     items: Array(10)
       .fill()
       .map(() => ({
         productName: "",
         quantity: "", // Empty string instead of 0
-        unit: "個",
+        unit: "pcs",
         unitPrice: "", // Empty string instead of 0
         amount: 0,
       })),
@@ -79,7 +79,7 @@ export default function EstimateForm() {
     setLoading(true);
 
     try {
-      // In a real application, we call the jsPDF function
+      // Call the PDF generation function
       const pdfDataUrl = await generateEstimatePDF(estimate);
 
       // Set the PDF URL for the viewer
@@ -87,7 +87,7 @@ export default function EstimateForm() {
       setShowPdfViewer(true);
     } catch (error) {
       console.error("Error generating PDF:", error);
-      alert("PDFの生成中にエラーが発生しました。");
+      alert("Error generating PDF.");
     } finally {
       setLoading(false);
     }
@@ -104,7 +104,7 @@ export default function EstimateForm() {
                   htmlFor="date"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  日付
+                  Date
                 </label>
                 <div className="mt-1">
                   <input
@@ -125,7 +125,7 @@ export default function EstimateForm() {
                   htmlFor="estimateNumber"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  見積番号
+                  Estimate Number
                 </label>
                 <div className="mt-1">
                   <input
@@ -144,7 +144,7 @@ export default function EstimateForm() {
                   htmlFor="clientName"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  お客様名
+                  Client Name
                 </label>
                 <div className="mt-1">
                   <input
@@ -165,7 +165,7 @@ export default function EstimateForm() {
                   htmlFor="clientAddress"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  お客様住所
+                  Client Address
                 </label>
                 <div className="mt-1">
                   <input
@@ -189,7 +189,7 @@ export default function EstimateForm() {
                   htmlFor="deliveryLocation"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  納品場所
+                  Delivery Location
                 </label>
                 <div className="mt-1">
                   <input
@@ -213,7 +213,7 @@ export default function EstimateForm() {
                   htmlFor="leadTime"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  納期
+                  Delivery Time
                 </label>
                 <div className="mt-1">
                   <input
@@ -234,7 +234,7 @@ export default function EstimateForm() {
                   htmlFor="paymentMethod"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  お支払方法
+                  Payment Method
                 </label>
                 <div className="mt-1">
                   <select
@@ -249,9 +249,9 @@ export default function EstimateForm() {
                     }
                     className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                   >
-                    <option value="銀行振込">銀行振込</option>
-                    <option value="現金">現金</option>
-                    <option value="クレジットカード">クレジットカード</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Credit Card">Credit Card</option>
                   </select>
                 </div>
               </div>
@@ -261,7 +261,7 @@ export default function EstimateForm() {
                   htmlFor="validUntil"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  有効期限
+                  Valid Until
                 </label>
                 <div className="mt-1">
                   <input
@@ -279,7 +279,7 @@ export default function EstimateForm() {
 
               <div className="sm:col-span-6">
                 <h3 className="text-lg font-medium text-gray-900 mb-2">
-                  商品明細
+                  Product Details
                 </h3>
 
                 <div className="overflow-x-auto">
@@ -290,31 +290,31 @@ export default function EstimateForm() {
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          商品名
+                          Product Name
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          数量
+                          Quantity
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          単位
+                          Unit
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          単価 (円)
+                          Unit Price ($)
                         </th>
                         <th
                           scope="col"
                           className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                         >
-                          金額 (円)
+                          Amount ($)
                         </th>
                       </tr>
                     </thead>
@@ -357,9 +357,9 @@ export default function EstimateForm() {
                               }
                               className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
                             >
-                              <option value="個">個</option>
-                              <option value="箱">箱</option>
-                              <option value="セット">セット</option>
+                              <option value="pcs">pcs</option>
+                              <option value="box">box</option>
+                              <option value="set">set</option>
                               <option value="kg">kg</option>
                               <option value="m">m</option>
                             </select>
@@ -390,10 +390,10 @@ export default function EstimateForm() {
                           colSpan="4"
                           className="px-6 py-4 text-right font-semibold"
                         >
-                          合計金額
+                          Total Amount
                         </td>
                         <td className="px-6 py-4 text-right font-semibold">
-                          {totalAmount.toLocaleString()} 円
+                          {totalAmount.toLocaleString()} $
                         </td>
                       </tr>
                     </tfoot>
@@ -406,7 +406,7 @@ export default function EstimateForm() {
                   htmlFor="notes"
                   className="block text-sm font-medium text-gray-700"
                 >
-                  備考
+                  Notes
                 </label>
                 <div className="mt-1">
                   <textarea
@@ -429,7 +429,7 @@ export default function EstimateForm() {
                 disabled={loading}
                 className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                {loading ? "PDF生成中..." : "PDFで出力"}
+                {loading ? "Generating PDF..." : "Generate PDF"}
               </button>
             </div>
           </form>
