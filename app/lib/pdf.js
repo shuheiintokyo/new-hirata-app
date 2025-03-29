@@ -1,9 +1,9 @@
 // app/lib/pdf.js
-// Simple and reliable PDF generation
-
-// Note: You need to run: npm install jspdf
+// PDF generation with Japanese font support
 
 import { jsPDF } from "jspdf";
+import "jspdf-autotable";
+import NotoSansJP from "./fonts/NotoSansJP-Regular-base64";
 
 // Function to generate a PDF for estimates
 export const generateEstimatePDF = (estimateData) => {
@@ -11,25 +11,30 @@ export const generateEstimatePDF = (estimateData) => {
     // Create a new PDF document
     const doc = new jsPDF();
 
+    // Register Japanese font
+    doc.addFileToVFS("NotoSansJP-Regular.ttf", NotoSansJP);
+    doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+    doc.setFont("NotoSansJP");
+
     // Add serial number for tracking
     const serialNumber = `PDF-${Date.now()}`;
 
     // --- HEADER ---
     doc.setFontSize(16);
-    doc.text("Hirata Trading", 20, 20);
+    doc.text("平田トレーディング", 20, 20);
 
     doc.setFontSize(10);
     doc.text("123-4567", 20, 28);
-    doc.text("Tokyo", 20, 33);
+    doc.text("東京都", 20, 33);
     doc.text("TEL: 03-1234-5678", 20, 38);
 
     // Document title
     doc.setFontSize(16);
-    doc.text("ESTIMATE", 105, 25, { align: "center" });
+    doc.text("見積書", 105, 25, { align: "center" });
 
     // Date and document number
     doc.setFontSize(10);
-    doc.text(`Date: ${estimateData.date}`, 190, 20, { align: "right" });
+    doc.text(`日付: ${estimateData.date}`, 190, 20, { align: "right" });
     doc.text(`No: ${estimateData.estimateNumber}`, 190, 25, { align: "right" });
     doc.text(`ID: ${serialNumber}`, 190, 30, { align: "right" });
 
@@ -38,10 +43,10 @@ export const generateEstimatePDF = (estimateData) => {
     doc.rect(20, 45, 170, 25, "F");
 
     doc.setFontSize(12);
-    doc.text(`Client: ${estimateData.clientName || "Customer"}`, 25, 55);
+    doc.text(`顧客: ${estimateData.clientName || "顧客名"}`, 25, 55);
     doc.setFontSize(10);
     if (estimateData.clientAddress) {
-      doc.text(`Address: ${estimateData.clientAddress}`, 25, 62);
+      doc.text(`住所: ${estimateData.clientAddress}`, 25, 62);
     }
 
     // --- TABLE HEADER ---
@@ -54,11 +59,11 @@ export const generateEstimatePDF = (estimateData) => {
 
     // Table headers
     doc.setFontSize(10);
-    doc.text("Product", 25, yPos + 7);
-    doc.text("Qty", 95, yPos + 7);
-    doc.text("Unit", 115, yPos + 7);
-    doc.text("Price", 135, yPos + 7);
-    doc.text("Amount", 175, yPos + 7, { align: "right" });
+    doc.text("商品", 25, yPos + 7);
+    doc.text("数量", 95, yPos + 7);
+    doc.text("単位", 115, yPos + 7);
+    doc.text("単価", 135, yPos + 7);
+    doc.text("金額", 175, yPos + 7, { align: "right" });
 
     // Draw table outline
     doc.rect(20, yPos, 170, 100);
@@ -106,6 +111,8 @@ export const generateEstimatePDF = (estimateData) => {
         // Don't exceed page
         if (yPos > 170 && index < estimateData.items.length - 1) {
           doc.addPage();
+          // Reset font for new page
+          doc.setFont("NotoSansJP");
           yPos = 20;
         }
       }
@@ -117,8 +124,8 @@ export const generateEstimatePDF = (estimateData) => {
     doc.line(130, yPos, 190, yPos);
 
     doc.setFontSize(12);
-    doc.text("Total Amount:", 130, yPos + 8);
-    doc.text(`${totalAmount.toLocaleString()} JPY`, 190, yPos + 8, {
+    doc.text("合計金額:", 130, yPos + 8);
+    doc.text(`${totalAmount.toLocaleString()} 円`, 190, yPos + 8, {
       align: "right",
     });
 
@@ -126,27 +133,27 @@ export const generateEstimatePDF = (estimateData) => {
     if (estimateData.notes) {
       yPos += 15;
       doc.setFontSize(10);
-      doc.text("Notes:", 20, yPos);
+      doc.text("備考:", 20, yPos);
       doc.text(estimateData.notes, 20, yPos + 7);
     }
 
     // --- FOOTER ---
     yPos = 260;
     doc.setFontSize(9);
-    doc.text(`Payment: ${estimateData.paymentMethod}`, 20, yPos);
-    doc.text(`Delivery: ${estimateData.leadTime}`, 20, yPos + 5);
+    doc.text(`支払方法: ${estimateData.paymentMethod}`, 20, yPos);
+    doc.text(`納期: ${estimateData.leadTime}`, 20, yPos + 5);
 
     if (estimateData.deliveryLocation) {
-      doc.text(`Location: ${estimateData.deliveryLocation}`, 20, yPos + 10);
+      doc.text(`納品先: ${estimateData.deliveryLocation}`, 20, yPos + 10);
     }
 
     // Add company seal placeholder
     doc.circle(170, yPos, 12, "S");
-    doc.text("SEAL", 170, yPos, { align: "center" });
+    doc.text("印", 170, yPos, { align: "center" });
 
     // Add document ID
     doc.setFontSize(6);
-    doc.text(`Document ID: ${serialNumber}`, 105, 285, { align: "center" });
+    doc.text(`文書ID: ${serialNumber}`, 105, 285, { align: "center" });
 
     // Generate and return PDF as data URL
     return doc.output("dataurlstring");
@@ -162,25 +169,30 @@ export const generateOrderPDF = (orderData) => {
     // Create a new PDF document
     const doc = new jsPDF();
 
+    // Register Japanese font
+    doc.addFileToVFS("NotoSansJP-Regular.ttf", NotoSansJP);
+    doc.addFont("NotoSansJP-Regular.ttf", "NotoSansJP", "normal");
+    doc.setFont("NotoSansJP");
+
     // Add serial number for tracking
     const serialNumber = `ORD-${Date.now()}`;
 
     // --- HEADER ---
     doc.setFontSize(16);
-    doc.text("Hirata Trading", 20, 20);
+    doc.text("平田トレーディング", 20, 20);
 
     doc.setFontSize(10);
     doc.text("123-4567", 20, 28);
-    doc.text("Tokyo", 20, 33);
+    doc.text("東京都", 20, 33);
     doc.text("TEL: 03-1234-5678", 20, 38);
 
     // Document title
     doc.setFontSize(16);
-    doc.text("PURCHASE ORDER", 105, 25, { align: "center" });
+    doc.text("発注書", 105, 25, { align: "center" });
 
     // Date and document number
     doc.setFontSize(10);
-    doc.text(`Date: ${orderData.date}`, 190, 20, { align: "right" });
+    doc.text(`日付: ${orderData.date}`, 190, 20, { align: "right" });
     doc.text(`No: ${orderData.orderNumber}`, 190, 25, { align: "right" });
     doc.text(`ID: ${serialNumber}`, 190, 30, { align: "right" });
 
@@ -189,10 +201,14 @@ export const generateOrderPDF = (orderData) => {
     doc.rect(20, 45, 170, 25, "F");
 
     doc.setFontSize(12);
-    doc.text(`Supplier: ${orderData.supplierName || "Supplier"}`, 25, 55);
+    doc.text(
+      `サプライヤー: ${orderData.supplierName || "サプライヤー名"}`,
+      25,
+      55
+    );
     doc.setFontSize(10);
     if (orderData.supplierAddress) {
-      doc.text(`Address: ${orderData.supplierAddress}`, 25, 62);
+      doc.text(`住所: ${orderData.supplierAddress}`, 25, 62);
     }
 
     // --- TABLE HEADER ---
@@ -205,12 +221,12 @@ export const generateOrderPDF = (orderData) => {
 
     // Table headers
     doc.setFontSize(10);
-    doc.text("Product", 25, yPos + 7);
-    doc.text("Code", 85, yPos + 7);
-    doc.text("Qty", 105, yPos + 7);
-    doc.text("Unit", 120, yPos + 7);
-    doc.text("Price", 140, yPos + 7);
-    doc.text("Amount", 175, yPos + 7, { align: "right" });
+    doc.text("商品", 25, yPos + 7);
+    doc.text("コード", 85, yPos + 7);
+    doc.text("数量", 105, yPos + 7);
+    doc.text("単位", 120, yPos + 7);
+    doc.text("単価", 140, yPos + 7);
+    doc.text("金額", 175, yPos + 7, { align: "right" });
 
     // Draw table outline
     doc.rect(20, yPos, 170, 100);
@@ -262,6 +278,8 @@ export const generateOrderPDF = (orderData) => {
         // Don't exceed page
         if (yPos > 170 && index < orderData.items.length - 1) {
           doc.addPage();
+          // Reset font for new page
+          doc.setFont("NotoSansJP");
           yPos = 20;
         }
       }
@@ -273,8 +291,8 @@ export const generateOrderPDF = (orderData) => {
     doc.line(130, yPos, 190, yPos);
 
     doc.setFontSize(12);
-    doc.text("Total Amount:", 130, yPos + 8);
-    doc.text(`${totalAmount.toLocaleString()} JPY`, 190, yPos + 8, {
+    doc.text("合計金額:", 130, yPos + 8);
+    doc.text(`${totalAmount.toLocaleString()} 円`, 190, yPos + 8, {
       align: "right",
     });
 
@@ -282,34 +300,30 @@ export const generateOrderPDF = (orderData) => {
     if (orderData.notes) {
       yPos += 15;
       doc.setFontSize(10);
-      doc.text("Notes:", 20, yPos);
+      doc.text("備考:", 20, yPos);
       doc.text(orderData.notes, 20, yPos + 7);
     }
 
     // --- FOOTER ---
     yPos = 260;
     doc.setFontSize(9);
-    doc.text(`Payment: ${orderData.paymentMethod}`, 20, yPos);
+    doc.text(`支払方法: ${orderData.paymentMethod}`, 20, yPos);
 
     if (orderData.requestedDeliveryDate) {
-      doc.text(
-        `Delivery Date: ${orderData.requestedDeliveryDate}`,
-        20,
-        yPos + 5
-      );
+      doc.text(`希望納期: ${orderData.requestedDeliveryDate}`, 20, yPos + 5);
     }
 
     if (orderData.deliveryLocation) {
-      doc.text(`Location: ${orderData.deliveryLocation}`, 20, yPos + 10);
+      doc.text(`納品先: ${orderData.deliveryLocation}`, 20, yPos + 10);
     }
 
     // Add company seal placeholder
     doc.circle(170, yPos, 12, "S");
-    doc.text("SEAL", 170, yPos, { align: "center" });
+    doc.text("印", 170, yPos, { align: "center" });
 
     // Add document ID
     doc.setFontSize(6);
-    doc.text(`Document ID: ${serialNumber}`, 105, 285, { align: "center" });
+    doc.text(`文書ID: ${serialNumber}`, 105, 285, { align: "center" });
 
     // Generate and return PDF as data URL
     return doc.output("dataurlstring");
