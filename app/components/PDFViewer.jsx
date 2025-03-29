@@ -62,7 +62,14 @@ export default function PDFViewer({ pdfUrl, onClose }) {
             </button>
 
             <button
-              onClick={() => window.open(pdfUrl, "_blank")}
+              onClick={() => {
+                // Ensure pdfUrl is a string before opening in new tab
+                if (typeof pdfUrl === "string") {
+                  window.open(pdfUrl, "_blank");
+                } else {
+                  setError("PDFのURLが無効です。");
+                }
+              }}
               className="inline-flex items-center px-3 py-1 mr-2 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700"
             >
               新しいタブで開く

@@ -80,7 +80,7 @@ export default function EstimateForm() {
 
     try {
       // In a real application, we call the jsPDF function
-      const pdfDataUrl = generateEstimatePDF(estimate);
+      const pdfDataUrl = await generateEstimatePDF(estimate);
 
       // Set the PDF URL for the viewer
       setPdfUrl(pdfDataUrl);
