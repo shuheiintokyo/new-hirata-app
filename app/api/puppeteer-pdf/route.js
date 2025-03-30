@@ -22,11 +22,15 @@ export async function POST(request) {
       );
     }
 
-    // Return the PDF
+    // Return the PDF with appropriate headers
     return new Response(pdfBuffer, {
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${type}-${Date.now()}.pdf"`,
+        // Add Cache-Control header to prevent caching issues
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
       },
     });
   } catch (error) {

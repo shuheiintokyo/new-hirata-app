@@ -7,17 +7,35 @@ import puppeteer from "puppeteer";
  * Generate a PDF for an estimate using Puppeteer
  * This properly handles Japanese text rendering
  * @param {Object} estimateData - The estimate data
- * @returns {Promise<string>} - A promise that resolves to a data URL for the PDF
+ * @returns {Promise<Buffer>} - A promise that resolves to a buffer for the PDF
  */
 export const generateEstimatePDF = async (estimateData) => {
+  let browser;
   try {
-    // Launch a new browser instance
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    console.log("Starting PDF generation for estimate...");
+
+    // Launch a new browser instance with new headless mode
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
     });
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
+    console.log("New page created");
+
+    // Set viewport for consistent rendering
+    await page.setViewport({
+      width: 1200,
+      height: 1600,
+      deviceScaleFactor: 2,
+    });
+    console.log("Viewport set");
 
     // Calculate totals
     const items = estimateData.items || [];
@@ -30,6 +48,7 @@ export const generateEstimatePDF = async (estimateData) => {
     const taxRate = 0.1; // 10% tax
     const tax = Math.floor(subtotal * taxRate);
     const total = subtotal + tax;
+    console.log("Calculations completed");
 
     // Generate HTML template with proper Japanese fonts
     const html = `
@@ -47,11 +66,13 @@ export const generateEstimatePDF = async (estimateData) => {
             padding: 20px;
             color: #333;
             font-size: 11px;
+            background-color: #ffffff;
           }
           
           .document {
             max-width: 210mm;
             margin: 0 auto;
+            background-color: #ffffff;
           }
           
           .document-title {
@@ -59,6 +80,7 @@ export const generateEstimatePDF = async (estimateData) => {
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
+            color: #000000;
           }
           
           .title-underline {
@@ -93,6 +115,7 @@ export const generateEstimatePDF = async (estimateData) => {
             justify-content: center;
             margin-top: 10px;
             margin-left: auto;
+            background-color: #ffffff;
           }
           
           .client-info {
@@ -215,6 +238,7 @@ export const generateEstimatePDF = async (estimateData) => {
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+              background-color: #ffffff;
             }
             
             @page {
@@ -232,12 +256,14 @@ export const generateEstimatePDF = async (estimateData) => {
           <div class="header">
             <div>
               <div class="document-info">
-                <div>発行日: ${estimateData.date}</div>
-                <div>見積番号: ${estimateData.estimateNumber}</div>
+                <div>発行日: ${estimateData.date || ""}</div>
+                <div>見積番号: ${estimateData.estimateNumber || ""}</div>
               </div>
               
               <div class="client-info">
-                <div class="client-name">${estimateData.clientName} 御中</div>
+                <div class="client-name">${
+                  estimateData.clientName || ""
+                } 御中</div>
                 ${
                   estimateData.clientAddress
                     ? `<div>${estimateData.clientAddress}</div>`
@@ -308,16 +334,16 @@ export const generateEstimatePDF = async (estimateData) => {
                   const amount = quantity * unitPrice;
 
                   return `
-                  <tr>
-                    <td class="text-center">${index + 1}</td>
-                    <td class="text-center">${item.productCode || ""}</td>
-                    <td>${item.productName || ""}</td>
-                    <td class="text-center">${quantity}</td>
-                    <td class="text-center">${item.unit || "個"}</td>
-                    <td class="text-right">${unitPrice.toLocaleString()}</td>
-                    <td class="text-right">${amount.toLocaleString()}</td>
-                  </tr>
-                `;
+                <tr>
+                  <td class="text-center">${index + 1}</td>
+                  <td class="text-center">${item.productCode || ""}</td>
+                  <td>${item.productName || ""}</td>
+                  <td class="text-center">${quantity}</td>
+                  <td class="text-center">${item.unit || "個"}</td>
+                  <td class="text-right">${unitPrice.toLocaleString()}</td>
+                  <td class="text-right">${amount.toLocaleString()}</td>
+                </tr>
+              `;
                 })
                 .join("")}
               
@@ -367,11 +393,24 @@ export const generateEstimatePDF = async (estimateData) => {
       </body>
       </html>
     `;
+    console.log("HTML template generated");
 
-    // Set content and wait until all fonts and stylesheets are loaded
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // Set content and wait until all resources are fully loaded
+    await page.setContent(html, {
+      waitUntil: ["load", "domcontentloaded", "networkidle0"],
+      timeout: 30000, // 30 seconds timeout
+    });
+    console.log("Content loaded");
 
-    // Generate PDF
+    // Ensure proper rendering by adding a small delay
+    await page.waitForTimeout(1000);
+    console.log("Additional rendering time completed");
+
+    // Force background colors to be explicitly printed
+    await page.emulateMediaType("screen");
+    console.log("Media type set to screen");
+
+    // Generate PDF with explicit white background
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -381,20 +420,28 @@ export const generateEstimatePDF = async (estimateData) => {
         bottom: "10mm",
         left: "10mm",
       },
+      preferCSSPageSize: true,
+      timeout: 30000, // 30 seconds timeout
     });
+    console.log("PDF generated successfully");
 
-    // Close browser
-    await browser.close();
-
-    // Convert buffer to data URL
-    const dataUrl = `data:application/pdf;base64,${pdfBuffer.toString(
-      "base64"
-    )}`;
-
-    return dataUrl;
+    return pdfBuffer;
   } catch (error) {
     console.error("PDF generation error:", error);
-    throw error;
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw new Error(`Failed to generate PDF: ${error.message}`);
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+        console.log("Browser closed successfully");
+      } catch (closeError) {
+        console.error("Error closing browser:", closeError);
+      }
+    }
   }
 };
 
@@ -402,17 +449,35 @@ export const generateEstimatePDF = async (estimateData) => {
  * Generate a PDF for a purchase order using Puppeteer
  * This properly handles Japanese text rendering
  * @param {Object} orderData - The purchase order data
- * @returns {Promise<string>} - A promise that resolves to a data URL for the PDF
+ * @returns {Promise<Buffer>} - A promise that resolves to a buffer for the PDF
  */
 export const generateOrderPDF = async (orderData) => {
+  let browser;
   try {
-    // Launch a new browser instance
-    const browser = await puppeteer.launch({
-      headless: true,
-      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    console.log("Starting PDF generation for order...");
+
+    // Launch a new browser instance with new headless mode
+    browser = await puppeteer.launch({
+      headless: "new",
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--disable-gpu",
+      ],
     });
+    console.log("Browser launched successfully");
 
     const page = await browser.newPage();
+    console.log("New page created");
+
+    // Set viewport for consistent rendering
+    await page.setViewport({
+      width: 1200,
+      height: 1600,
+      deviceScaleFactor: 2,
+    });
+    console.log("Viewport set");
 
     // Calculate totals
     const items = orderData.items || [];
@@ -425,6 +490,7 @@ export const generateOrderPDF = async (orderData) => {
     const taxRate = 0.1; // 10% tax
     const tax = Math.floor(subtotal * taxRate);
     const total = subtotal + tax;
+    console.log("Calculations completed");
 
     // Generate HTML template with proper Japanese fonts
     const html = `
@@ -442,11 +508,13 @@ export const generateOrderPDF = async (orderData) => {
             padding: 20px;
             color: #333;
             font-size: 11px;
+            background-color: #ffffff;
           }
           
           .document {
             max-width: 210mm;
             margin: 0 auto;
+            background-color: #ffffff;
           }
           
           .document-title {
@@ -454,6 +522,7 @@ export const generateOrderPDF = async (orderData) => {
             font-size: 24px;
             font-weight: bold;
             margin-bottom: 5px;
+            color: #000000;
           }
           
           .title-underline {
@@ -488,6 +557,7 @@ export const generateOrderPDF = async (orderData) => {
             justify-content: center;
             margin-top: 10px;
             margin-left: auto;
+            background-color: #ffffff;
           }
           
           .supplier-info {
@@ -610,6 +680,7 @@ export const generateOrderPDF = async (orderData) => {
             body {
               -webkit-print-color-adjust: exact;
               print-color-adjust: exact;
+              background-color: #ffffff !important;
             }
             
             @page {
@@ -627,12 +698,14 @@ export const generateOrderPDF = async (orderData) => {
           <div class="header">
             <div>
               <div class="document-info">
-                <div>発行日: ${orderData.date}</div>
-                <div>発注番号: ${orderData.orderNumber}</div>
+                <div>発行日: ${orderData.date || ""}</div>
+                <div>発注番号: ${orderData.orderNumber || ""}</div>
               </div>
               
               <div class="supplier-info">
-                <div class="supplier-name">${orderData.supplierName} 御中</div>
+                <div class="supplier-name">${
+                  orderData.supplierName || ""
+                } 御中</div>
                 ${
                   orderData.supplierAddress
                     ? `<div>${orderData.supplierAddress}</div>`
@@ -711,16 +784,16 @@ export const generateOrderPDF = async (orderData) => {
                   const amount = quantity * unitPrice;
 
                   return `
-                  <tr>
-                    <td class="text-center">${index + 1}</td>
-                    <td class="text-center">${item.productCode || ""}</td>
-                    <td>${item.productName || ""}</td>
-                    <td class="text-center">${quantity}</td>
-                    <td class="text-center">${item.unit || "個"}</td>
-                    <td class="text-right">${unitPrice.toLocaleString()}</td>
-                    <td class="text-right">${amount.toLocaleString()}</td>
-                  </tr>
-                `;
+                <tr>
+                  <td class="text-center">${index + 1}</td>
+                  <td class="text-center">${item.productCode || ""}</td>
+                  <td>${item.productName || ""}</td>
+                  <td class="text-center">${quantity}</td>
+                  <td class="text-center">${item.unit || "個"}</td>
+                  <td class="text-right">${unitPrice.toLocaleString()}</td>
+                  <td class="text-right">${amount.toLocaleString()}</td>
+                </tr>
+              `;
                 })
                 .join("")}
               
@@ -770,11 +843,24 @@ export const generateOrderPDF = async (orderData) => {
       </body>
       </html>
     `;
+    console.log("HTML template generated");
 
-    // Set content and wait until all fonts and stylesheets are loaded
-    await page.setContent(html, { waitUntil: "networkidle0" });
+    // Set content and wait until all resources are fully loaded
+    await page.setContent(html, {
+      waitUntil: ["load", "domcontentloaded", "networkidle0"],
+      timeout: 30000, // 30 seconds timeout
+    });
+    console.log("Content loaded");
 
-    // Generate PDF
+    // Ensure proper rendering by adding a small delay
+    await page.waitForTimeout(1000);
+    console.log("Additional rendering time completed");
+
+    // Force background colors to be explicitly printed
+    await page.emulateMediaType("screen");
+    console.log("Media type set to screen");
+
+    // Generate PDF with explicit white background
     const pdfBuffer = await page.pdf({
       format: "A4",
       printBackground: true,
@@ -784,19 +870,27 @@ export const generateOrderPDF = async (orderData) => {
         bottom: "10mm",
         left: "10mm",
       },
+      preferCSSPageSize: true,
+      timeout: 30000, // 30 seconds timeout
     });
+    console.log("PDF generated successfully");
 
-    // Close browser
-    await browser.close();
-
-    // Convert buffer to data URL
-    const dataUrl = `data:application/pdf;base64,${pdfBuffer.toString(
-      "base64"
-    )}`;
-
-    return dataUrl;
+    return pdfBuffer;
   } catch (error) {
     console.error("PDF generation error:", error);
-    throw error;
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    throw new Error(`Failed to generate PDF: ${error.message}`);
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+        console.log("Browser closed successfully");
+      } catch (closeError) {
+        console.error("Error closing browser:", closeError);
+      }
+    }
   }
 };
