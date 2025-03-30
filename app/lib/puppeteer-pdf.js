@@ -1,32 +1,52 @@
 // app/lib/puppeteer-pdf.js
-// Improved version for Japanese document generation using Puppeteer
+// Improved version with better error handling and browser management
 
-import puppeteer from "puppeteer";
+const puppeteer = require('puppeteer');
+
+/**
+ * Get a browser instance with properly configured launch options
+ * @returns {Promise<Browser>} - Puppeteer browser instance
+ */
+async function getBrowserInstance() {
+  try {
+    return await puppeteer.launch({
+      headless: "new", // Use the new headless mode
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-accelerated-2d-canvas', 
+        '--no-first-run',
+        '--no-zygote',
+        '--single-process',
+        '--disable-gpu'
+      ],
+      ignoreHTTPSErrors: true,
+      timeout: 60000, // Increase timeout to 60 seconds
+    });
+  } catch (error) {
+    console.error('Failed to launch browser:', error);
+    throw new Error(`Browser launch failed: ${error.message}`);
+  }
+}
 
 /**
  * Generate a PDF for an estimate using Puppeteer
- * This properly handles Japanese text rendering
+ * This properly handles Japanese text rendering with improved error handling
  * @param {Object} estimateData - The estimate data
  * @returns {Promise<Buffer>} - A promise that resolves to a buffer for the PDF
  */
-export const generateEstimatePDF = async (estimateData) => {
-  let browser;
+exports.generateEstimatePDF = async (estimateData) => {
+  let browser = null;
+  let page = null;
+  
   try {
     console.log("Starting PDF generation for estimate...");
-
-    // Launch a new browser instance with new headless mode
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
+    browser = await getBrowserInstance();
     console.log("Browser launched successfully");
 
-    const page = await browser.newPage();
+    // Create a new page
+    page = await browser.newPage();
     console.log("New page created");
 
     // Set viewport for consistent rendering
@@ -56,12 +76,13 @@ export const generateEstimatePDF = async (estimateData) => {
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>見積書</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
           
           body {
-            font-family: 'Noto Sans JP', sans-serif;
+            font-family: 'Noto Sans JP', sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial;
             margin: 0;
             padding: 20px;
             color: #333;
@@ -395,15 +416,15 @@ export const generateEstimatePDF = async (estimateData) => {
     `;
     console.log("HTML template generated");
 
-    // Set content and wait until all resources are fully loaded
+    // Set content and wait until all resources are fully loaded with improved timeout
     await page.setContent(html, {
       waitUntil: ["load", "domcontentloaded", "networkidle0"],
-      timeout: 30000, // 30 seconds timeout
+      timeout: 60000, // Extend timeout to 60 seconds
     });
     console.log("Content loaded");
 
-    // Ensure proper rendering by adding a small delay
-    await page.waitForTimeout(1000);
+    // Ensure proper rendering with a wait
+    await page.waitForTimeout(2000);
     console.log("Additional rendering time completed");
 
     // Force background colors to be explicitly printed
@@ -421,7 +442,7 @@ export const generateEstimatePDF = async (estimateData) => {
         left: "10mm",
       },
       preferCSSPageSize: true,
-      timeout: 30000, // 30 seconds timeout
+      timeout: 60000, // Extend timeout to 60 seconds
     });
     console.log("PDF generated successfully");
 
@@ -432,8 +453,122 @@ export const generateEstimatePDF = async (estimateData) => {
       message: error.message,
       stack: error.stack,
     });
+    
+    // Enhanced error details for debugging
+    if (error.code) {
+      console.error(`Error code: ${error.code}, syscall: ${error.syscall}`);
+    }
+    
+    // Try a fallback approach using a simpler configuration if available
+    try {
+      if (page && !browser.isConnected()) {
+        console.log("Attempting fallback PDF generation with simplified options...");
+        // If we still have a page but lost browser connection, try a simplified approach
+        const simplePdfBuffer = await page.pdf({
+          format: "A4",
+          printBackground: true
+        });
+        console.log("Fallback PDF generated successfully");
+        return simplePdfBuffer;
+      }
+    } catch (fallbackError) {
+      console.error("Fallback PDF generation also failed:", fallbackError);
+    }
+    
     throw new Error(`Failed to generate PDF: ${error.message}`);
   } finally {
+    // Safe cleanup
+    if (page) {
+      try {
+        await page.close();
+        console.log("Page closed successfully");
+      } catch (closeError) {
+        console.error("Error closing page:", closeError);
+      }
+    }
+    
+    if (browser) {
+      try {
+        await browser.close();
+        console.log("Browser closed successfully");
+      } catch (closeError) {
+        console.error("Error closing browser:", closeError);
+      }
+    }
+  }
+};
+
+    // Set content and wait until all resources are fully loaded with improved timeout
+    await page.setContent(html, {
+      waitUntil: ["load", "domcontentloaded", "networkidle0"],
+      timeout: 60000, // Extend timeout to 60 seconds
+    });
+    console.log("Content loaded");
+
+    // Ensure proper rendering with a wait
+    await page.waitForTimeout(2000);
+    console.log("Additional rendering time completed");
+
+    // Force background colors to be explicitly printed
+    await page.emulateMediaType("screen");
+    console.log("Media type set to screen");
+
+    // Generate PDF with explicit white background
+    const pdfBuffer = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      margin: {
+        top: "10mm",
+        right: "10mm",
+        bottom: "10mm",
+        left: "10mm",
+      },
+      preferCSSPageSize: true,
+      timeout: 60000, // Extend timeout to 60 seconds
+    });
+    console.log("PDF generated successfully");
+
+    return pdfBuffer;
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    console.error("Error details:", {
+      message: error.message,
+      stack: error.stack,
+    });
+    
+    // Enhanced error details for debugging
+    if (error.code) {
+      console.error(`Error code: ${error.code}, syscall: ${error.syscall}`);
+    }
+    
+    // Try a fallback approach using a simpler configuration if available
+    try {
+      if (page && !browser.isConnected()) {
+        console.log("Attempting fallback PDF generation with simplified options...");
+        // If we still have a page but lost browser connection, try a simplified approach
+        const simplePdfBuffer = await page.pdf({
+          format: "A4",
+          printBackground: true
+        });
+        console.log("Fallback PDF generated successfully");
+        return simplePdfBuffer;
+      }
+    } catch (fallbackError) {
+      console.error("Fallback PDF generation also failed:", fallbackError);
+    }
+    
+    throw new Error(`Failed to generate PDF: ${error.message}`);
+  } finally {
+    // Safe cleanup
+    if (page) {
+      try {
+        await page.close();
+        console.log("Page closed successfully");
+      } catch (closeError) {
+        console.error("Error closing page:", closeError);
+      }
+    }
+    
     if (browser) {
       try {
         await browser.close();
@@ -447,28 +582,21 @@ export const generateEstimatePDF = async (estimateData) => {
 
 /**
  * Generate a PDF for a purchase order using Puppeteer
- * This properly handles Japanese text rendering
+ * This properly handles Japanese text rendering with improved error handling
  * @param {Object} orderData - The purchase order data
  * @returns {Promise<Buffer>} - A promise that resolves to a buffer for the PDF
  */
-export const generateOrderPDF = async (orderData) => {
-  let browser;
+exports.generateOrderPDF = async (orderData) => {
+  let browser = null;
+  let page = null;
+  
   try {
     console.log("Starting PDF generation for order...");
-
-    // Launch a new browser instance with new headless mode
-    browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-gpu",
-      ],
-    });
+    browser = await getBrowserInstance();
     console.log("Browser launched successfully");
 
-    const page = await browser.newPage();
+    // Create a new page
+    page = await browser.newPage();
     console.log("New page created");
 
     // Set viewport for consistent rendering
@@ -498,12 +626,13 @@ export const generateOrderPDF = async (orderData) => {
       <html>
       <head>
         <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>発注書</title>
         <style>
           @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap');
           
           body {
-            font-family: 'Noto Sans JP', sans-serif;
+            font-family: 'Noto Sans JP', sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial;
             margin: 0;
             padding: 20px;
             color: #333;
@@ -844,53 +973,3 @@ export const generateOrderPDF = async (orderData) => {
       </html>
     `;
     console.log("HTML template generated");
-
-    // Set content and wait until all resources are fully loaded
-    await page.setContent(html, {
-      waitUntil: ["load", "domcontentloaded", "networkidle0"],
-      timeout: 30000, // 30 seconds timeout
-    });
-    console.log("Content loaded");
-
-    // Ensure proper rendering by adding a small delay
-    await page.waitForTimeout(1000);
-    console.log("Additional rendering time completed");
-
-    // Force background colors to be explicitly printed
-    await page.emulateMediaType("screen");
-    console.log("Media type set to screen");
-
-    // Generate PDF with explicit white background
-    const pdfBuffer = await page.pdf({
-      format: "A4",
-      printBackground: true,
-      margin: {
-        top: "10mm",
-        right: "10mm",
-        bottom: "10mm",
-        left: "10mm",
-      },
-      preferCSSPageSize: true,
-      timeout: 30000, // 30 seconds timeout
-    });
-    console.log("PDF generated successfully");
-
-    return pdfBuffer;
-  } catch (error) {
-    console.error("PDF generation error:", error);
-    console.error("Error details:", {
-      message: error.message,
-      stack: error.stack,
-    });
-    throw new Error(`Failed to generate PDF: ${error.message}`);
-  } finally {
-    if (browser) {
-      try {
-        await browser.close();
-        console.log("Browser closed successfully");
-      } catch (closeError) {
-        console.error("Error closing browser:", closeError);
-      }
-    }
-  }
-};

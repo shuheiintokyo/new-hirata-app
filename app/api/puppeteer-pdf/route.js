@@ -8,17 +8,33 @@ export async function POST(request) {
     const data = await request.json();
     const { type, content } = data; // 'type' can be 'estimate' or 'order'
 
+    // Validate input data
+    if (!type || !content) {
+      return NextResponse.json(
+        { error: "Missing required fields in request body" },
+        { status: 400 }
+      );
+    }
+
     let pdfBuffer;
 
-    // Generate the appropriate PDF based on the type
-    if (type === "estimate") {
-      pdfBuffer = await generateEstimatePDF(content);
-    } else if (type === "order") {
-      pdfBuffer = await generateOrderPDF(content);
-    } else {
+    // Generate the appropriate PDF based on the type with error handling
+    try {
+      if (type === "estimate") {
+        pdfBuffer = await generateEstimatePDF(content);
+      } else if (type === "order") {
+        pdfBuffer = await generateOrderPDF(content);
+      } else {
+        return NextResponse.json(
+          { error: 'Invalid document type. Must be "estimate" or "order".' },
+          { status: 400 }
+        );
+      }
+    } catch (pdfError) {
+      console.error("PDF generation failed:", pdfError);
       return NextResponse.json(
-        { error: 'Invalid document type. Must be "estimate" or "order".' },
-        { status: 400 }
+        { error: `Failed to generate PDF: ${pdfError.message}` },
+        { status: 500 }
       );
     }
 
@@ -34,9 +50,13 @@ export async function POST(request) {
       },
     });
   } catch (error) {
-    console.error("Error generating PDF:", error);
+    console.error("API route error:", error);
     return NextResponse.json(
-      { error: "Failed to generate PDF", details: error.message },
+      {
+        error: "Failed to process PDF generation request",
+        details: error.message,
+        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+      },
       { status: 500 }
     );
   }
