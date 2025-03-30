@@ -1,7 +1,5 @@
 // app/lib/puppeteer-pdf.js
-// Improved version with better error handling and browser management
-
-const puppeteer = require("puppeteer");
+// Client-side code that only uses fetch
 
 /**
  * Generate a PDF for an estimate
@@ -10,7 +8,8 @@ const puppeteer = require("puppeteer");
  */
 exports.generateEstimatePDF = async (estimateData) => {
   try {
-    const response = await fetch("/api/generate-pdf", {
+    console.log("Starting estimate PDF generation request");
+    const response = await fetch(`${window.location.origin}/api/generate-pdf`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -21,19 +20,23 @@ exports.generateEstimatePDF = async (estimateData) => {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error("PDF generation failed");
-    }
-
+    console.log("Response status:", response.status);
     const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || "PDF generation failed");
+    console.log("Response received:", result);
+
+    if (!response.ok || !result.success) {
+      const errorMessage = result.error || "PDF generation failed";
+      console.error("PDF generation error:", errorMessage);
+      if (result.stack) {
+        console.error("Error stack:", result.stack);
+      }
+      throw new Error(errorMessage);
     }
 
-    // Convert base64 to data URL
+    console.log("PDF generated successfully");
     return `data:application/pdf;base64,${result.data}`;
   } catch (error) {
-    console.error("PDF generation failed:", error);
+    console.error("Client-side PDF generation error:", error);
     throw error;
   }
 };
@@ -45,7 +48,8 @@ exports.generateEstimatePDF = async (estimateData) => {
  */
 exports.generateOrderPDF = async (orderData) => {
   try {
-    const response = await fetch("/api/generate-pdf", {
+    console.log("Starting order PDF generation request");
+    const response = await fetch(`${window.location.origin}/api/generate-pdf`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -56,19 +60,23 @@ exports.generateOrderPDF = async (orderData) => {
       }),
     });
 
-    if (!response.ok) {
-      throw new Error("PDF generation failed");
-    }
-
+    console.log("Response status:", response.status);
     const result = await response.json();
-    if (!result.success) {
-      throw new Error(result.error || "PDF generation failed");
+    console.log("Response received:", result);
+
+    if (!response.ok || !result.success) {
+      const errorMessage = result.error || "PDF generation failed";
+      console.error("PDF generation error:", errorMessage);
+      if (result.stack) {
+        console.error("Error stack:", result.stack);
+      }
+      throw new Error(errorMessage);
     }
 
-    // Convert base64 to data URL
+    console.log("PDF generated successfully");
     return `data:application/pdf;base64,${result.data}`;
   } catch (error) {
-    console.error("PDF generation failed:", error);
+    console.error("Client-side PDF generation error:", error);
     throw error;
   }
 };

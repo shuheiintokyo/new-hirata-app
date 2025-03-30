@@ -2,17 +2,30 @@ import puppeteer from "puppeteer";
 import { NextResponse } from "next/server";
 
 export async function POST(request) {
+  let browser = null;
   try {
     const data = await request.json();
     const { type, ...documentData } = data;
 
-    // Simple browser launch configuration that works
-    const browser = await puppeteer.launch({
+    console.log("Starting PDF generation for type:", type);
+
+    // Enhanced browser launch configuration
+    browser = await puppeteer.launch({
       headless: "new",
-      args: ["--no-sandbox"],
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--disable-dev-shm-usage",
+        "--font-render-hinting=none",
+        "--disable-gpu",
+      ],
+      timeout: 30000,
     });
 
+    console.log("Browser launched successfully");
+
     const page = await browser.newPage();
+    console.log("New page created");
 
     try {
       // Calculate totals
@@ -30,35 +43,54 @@ export async function POST(request) {
       // Generate HTML template with full styling
       const html = generateHTML(type, documentData, subtotal, tax, total);
 
-      // Set content and generate PDF
-      await page.setContent(html);
+      // Set content and generate PDF with timeout and error handling
+      console.log("Setting page content");
+      await page.setContent(html, {
+        waitUntil: "networkidle0",
+        timeout: 30000,
+      });
+      console.log("Content set successfully");
+
+      console.log("Generating PDF");
       const pdfBuffer = await page.pdf({
         format: "A4",
         printBackground: true,
         margin: { top: "8mm", right: "8mm", bottom: "8mm", left: "8mm" },
         preferCSSPageSize: true,
+        timeout: 30000,
       });
+      console.log("PDF generated successfully");
 
       // Convert Buffer to Base64
       const base64Pdf = pdfBuffer.toString("base64");
+      console.log("PDF converted to base64");
 
       return NextResponse.json({
         success: true,
         data: base64Pdf,
       });
     } finally {
-      await page.close();
-      await browser.close();
+      if (page) {
+        await page.close();
+        console.log("Page closed");
+      }
     }
   } catch (error) {
-    console.error("PDF generation failed:", error);
+    console.error("PDF generation failed with error:", error);
+    console.error("Error stack:", error.stack);
     return NextResponse.json(
       {
         success: false,
-        error: error.message,
+        error: `PDF generation failed: ${error.message}`,
+        stack: error.stack,
       },
       { status: 500 }
     );
+  } finally {
+    if (browser) {
+      await browser.close();
+      console.log("Browser closed");
+    }
   }
 }
 
