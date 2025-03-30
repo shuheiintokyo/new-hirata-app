@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import PDFViewer from "./PDFViewer";
-import { generateOrderPDF } from "@/app/lib/pdf";
+import { generateOrderPDF } from "@/app/lib/puppeteer-pdf";
 
 export default function OrderForm() {
   const [loading, setLoading] = useState(false);
