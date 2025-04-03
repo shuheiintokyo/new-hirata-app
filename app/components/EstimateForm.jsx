@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import PDFViewer from "./PDFViewer";
+import { generateEstimatePDF } from "../lib/puppeteer-pdf";
 
 export default function EstimateForm() {
   const [loading, setLoading] = useState(false);
@@ -78,30 +79,11 @@ export default function EstimateForm() {
     setLoading(true);
 
     try {
-      // Call the server API to generate the PDF using Puppeteer
-      const response = await fetch("/api/puppeteer-pdf", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          type: "estimate",
-          content: estimate,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("PDF generation failed");
-      }
-
-      // Get the PDF as a blob
-      const pdfBlob = await response.blob();
-
-      // Create a URL for the blob
-      const pdfUrl = URL.createObjectURL(pdfBlob);
+      // Use the generateEstimatePDF function from puppeteer-pdf.js
+      const pdfDataUrl = await generateEstimatePDF(estimate);
 
       // Set the PDF URL for the viewer
-      setPdfUrl(pdfUrl);
+      setPdfUrl(pdfDataUrl);
       setShowPdfViewer(true);
     } catch (error) {
       console.error("Error generating PDF:", error);

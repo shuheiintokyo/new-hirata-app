@@ -9,6 +9,14 @@ export default function PDFViewer({ pdfUrl, onClose }) {
   useEffect(() => {
     if (pdfUrl) {
       setLoading(false);
+      // Validate PDF URL
+      if (
+        !pdfUrl.startsWith("data:application/pdf;base64,") &&
+        !pdfUrl.startsWith("blob:")
+      ) {
+        setError("無効なPDFデータです。");
+        setLoading(false);
+      }
     }
   }, [pdfUrl]);
 
@@ -63,11 +71,35 @@ export default function PDFViewer({ pdfUrl, onClose }) {
 
             <button
               onClick={() => {
-                // Ensure pdfUrl is a string before opening in new tab
-                if (typeof pdfUrl === "string") {
-                  window.open(pdfUrl, "_blank");
-                } else {
-                  setError("PDFのURLが無効です。");
+                try {
+                  if (typeof pdfUrl === "string") {
+                    const newWindow = window.open();
+                    if (newWindow) {
+                      newWindow.document.write(`
+                        <html>
+                          <head>
+                            <title>PDF Viewer</title>
+                            <style>
+                              body { margin: 0; padding: 0; }
+                              iframe { width: 100%; height: 100vh; border: none; }
+                            </style>
+                          </head>
+                          <body>
+                            <iframe src="${pdfUrl}"></iframe>
+                          </body>
+                        </html>
+                      `);
+                    } else {
+                      setError(
+                        "ポップアップがブロックされました。ポップアップを許可してください。"
+                      );
+                    }
+                  } else {
+                    setError("PDFのURLが無効です。");
+                  }
+                } catch (err) {
+                  console.error("Open in new tab error:", err);
+                  setError("新しいタブで開く際にエラーが発生しました。");
                 }
               }}
               className="inline-flex items-center px-3 py-1 mr-2 border border-transparent text-sm font-medium rounded shadow-sm text-white bg-green-600 hover:bg-green-700"
@@ -91,12 +123,20 @@ export default function PDFViewer({ pdfUrl, onClose }) {
               <span className="sr-only">読み込み中...</span>
             </div>
           ) : (
-            <iframe
-              src={pdfUrl}
-              className="w-full h-full border-0"
-              title="PDF Viewer"
+            <object
+              data={pdfUrl}
+              type="application/pdf"
+              className="w-full h-full"
               onError={() => setError("PDFの表示中にエラーが発生しました。")}
-            />
+            >
+              <p>
+                PDFを表示できません。
+                <a href={pdfUrl} download>
+                  ダウンロード
+                </a>
+                してください。
+              </p>
+            </object>
           )}
         </div>
       </div>

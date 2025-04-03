@@ -61,13 +61,28 @@ export async function POST(request) {
       });
       console.log("PDF generated successfully");
 
-      // Convert Buffer to Base64
-      const base64Pdf = pdfBuffer.toString("base64");
+      // Validate PDF buffer
+      if (!pdfBuffer || pdfBuffer.length === 0) {
+        throw new Error("Generated PDF is empty");
+      }
+
+      // Convert Buffer to Base64 with proper error handling
+      let base64Pdf;
+      try {
+        base64Pdf = pdfBuffer.toString("base64");
+        if (!base64Pdf) {
+          throw new Error("Failed to convert PDF to base64");
+        }
+      } catch (error) {
+        console.error("Base64 conversion error:", error);
+        throw new Error("Failed to process PDF data");
+      }
       console.log("PDF converted to base64");
 
       return NextResponse.json({
         success: true,
         data: base64Pdf,
+        contentType: "application/pdf",
       });
     } finally {
       if (page) {
@@ -322,10 +337,8 @@ function generateHTML(type, data, subtotal, tax, total) {
             </div>
             
             <div class="client-info">
-              <div class="client-name">${data.supplierName || ""} 御中</div>
-              ${
-                data.supplierAddress ? `<div>${data.supplierAddress}</div>` : ""
-              }
+              <div class="client-name">${data.clientName || ""} 御中</div>
+              ${data.clientAddress ? `<div>${data.clientAddress}</div>` : ""}
             </div>
           </div>
           
@@ -357,7 +370,7 @@ function generateHTML(type, data, subtotal, tax, total) {
             }
             <div class="info-item">
               <label>納期:</label>
-              <span>${data.requestedDeliveryDate || "2週間"}</span>
+              <span>${data.leadTime || "2週間"}</span>
             </div>
             <div class="info-item">
               <label>お支払条件:</label>

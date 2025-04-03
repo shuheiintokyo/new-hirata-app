@@ -33,8 +33,15 @@ exports.generateEstimatePDF = async (estimateData) => {
       throw new Error(errorMessage);
     }
 
+    // Validate PDF data
+    if (!result.data || typeof result.data !== "string") {
+      throw new Error("Invalid PDF data received from server");
+    }
+
     console.log("PDF generated successfully");
-    return `data:application/pdf;base64,${result.data}`;
+    return `data:${result.contentType || "application/pdf"};base64,${
+      result.data
+    }`;
   } catch (error) {
     console.error("Client-side PDF generation error:", error);
     throw error;
@@ -73,8 +80,15 @@ exports.generateOrderPDF = async (orderData) => {
       throw new Error(errorMessage);
     }
 
+    // Validate PDF data
+    if (!result.data || typeof result.data !== "string") {
+      throw new Error("Invalid PDF data received from server");
+    }
+
     console.log("PDF generated successfully");
-    return `data:application/pdf;base64,${result.data}`;
+    return `data:${result.contentType || "application/pdf"};base64,${
+      result.data
+    }`;
   } catch (error) {
     console.error("Client-side PDF generation error:", error);
     throw error;
